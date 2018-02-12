@@ -1,0 +1,72 @@
+kind: Secret
+apiVersion: v1
+metadata:
+  labels:
+    app: auto-csr-approval
+  name: auto-csr-approval
+type: tls
+data:
+
+---
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1alpha1
+metadata:
+  name: auto-csr-approver-role-binding
+subjects:
+- kind: ServiceAccount
+  name: auto-csr-approver-service-account
+  namespace: default
+roleRef:
+  kind: ClusterRole
+  name: auto-csr-approver-service-account-role
+  apiGroup: rbac.authorization.k8s.io
+
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1beta1
+metadata:
+  name: auto-csr-approver-service-account-role
+rules:
+- apiGroups: ["*"]
+  resources: ["*"]
+  verbs: ["*"]
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: auto-csr-approver-service-account
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+  name: auto-csr-approval
+spec:
+  selector:
+    app: auto-csr-approval
+  clusterIP: None
+  sessionAffinity: None
+  type: ClusterIP
+
+---
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  name: auto-csr-approval
+  labels:
+    app: auto-csr-approval
+spec:
+  replicas: 1
+  template:
+    metadata:
+      name: auto-csr-approval
+      labels:
+        app: auto-csr-approval
+    spec:
+      serviceAccountName: auto-csr-approver-service-account
+      containers:
+        - name: approver
+          image: approver:latest
+          imagePullPolicy: IfNotPresent
